@@ -15,7 +15,18 @@ TEMP_THRESHOLD_9=90
 CHECK_INTERVAL=30
 
 # Log Path
-LOG_FILE="/var/log/fanctrl.log"
+LOG_FILE="/var/log/fanctrl/fanctrl.log"
+LOG_MAX_SIZE=$((1024 * 1024)) # 1MB
+LOG_BACKUP_COUNT=5
+
+# Ensure the log directory exists before writing
+ensure_log_directory() {
+    local log_dir
+    log_dir=$(dirname "$LOG_FILE")
+    if [ ! -d "$log_dir" ]; then
+        mkdir -p "$log_dir"
+    fi
+}
 
 # Danger Zone Temperature Threshold (in Celsius)
 TEMP_MAX=90
@@ -23,10 +34,52 @@ TEMP_MAX=90
 # Init Current Fan Speed
 current_fan_speed=""
 
+# Log rotation helpers
+get_file_size() {
+    local file=$1
+    if command -v stat &>/dev/null; then
+        stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null
+    elif [ -f "$file" ]; then
+        wc -c <"$file" 2>/dev/null
+    fi
+}
+
+rotate_logs() {
+    if [ ! -f "$LOG_FILE" ]; then
+        return
+    fi
+
+    local size
+    size=$(get_file_size "$LOG_FILE")
+
+    if [ -n "$size" ] && [ "$size" -ge "$LOG_MAX_SIZE" ]; then
+        if [ "$LOG_BACKUP_COUNT" -gt 0 ]; then
+            for ((i = LOG_BACKUP_COUNT - 1; i >= 1; i--)); do
+                if [ -f "${LOG_FILE}.${i}" ]; then
+                    mv "${LOG_FILE}.${i}" "${LOG_FILE}.$((i + 1))"
+                fi
+            done
+
+            mv "$LOG_FILE" "${LOG_FILE}.1"
+        else
+            : >"$LOG_FILE"
+            return
+        fi
+
+        if [ -f "${LOG_FILE}.$((LOG_BACKUP_COUNT + 1))" ]; then
+            rm -f "${LOG_FILE}.$((LOG_BACKUP_COUNT + 1))"
+        fi
+
+        : >"$LOG_FILE"
+    fi
+}
+
 # Logging
 log() {
     level=$1
     message=$2
+    ensure_log_directory
+    rotate_logs
     timestamp=$(date +"%d-%m-%Y %H:%M:%S")
     log_message="[$timestamp] [$level] $message"
     echo "$log_message"
