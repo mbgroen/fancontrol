@@ -1,0 +1,12 @@
+[Unit]
+Description=Local Dell PowerEdge Fan Control Script
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/dell/fancontrol/fanctl.sh
+# Use the script's built-in 'trap' function to return control to iDRAC on stop/kill
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
