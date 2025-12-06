@@ -1,4 +1,4 @@
-# # Script / service to dynamicly control fan speed of Dell PowerEdge servers (tested on Dell PE T430)
+# # Script / service to dynamicly control fan speed of Dell PowerEdge servers
 IPMI fan speed control utility (Tested on Dell PowerEdge T430)
 
 This script makes use of the ipmitool -I open option and not the -I lan or lanplus options
